@@ -1,0 +1,256 @@
+<html>
+    <head>
+        <title>Sign example</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style type="text/css" media="screen">
+            body {
+                font-family: Helvetica, Arial, Sans-Serif;
+            }
+            
+            input {
+                margin: 4px;
+            }
+            
+            textarea {
+                margin: 4px;
+            }
+            
+            input.error { 
+                border: 1px solid #f00; 
+            }
+            
+            ul {
+                display: inline-block;
+                text-align:left;
+            }
+            
+            .result {
+                color: red;
+                font-size: small;
+            }
+            
+            #panel {
+                position:fixed;
+                padding-top: 8%;
+                padding-bottom: 0;
+                padding-left: 0;
+                padding-right: 0;
+                margin:0;
+                top:0;
+                left:0;
+                width: 100%;
+                height: 100%;
+                background:rgba(255,255,255,0.9);
+                display: none;
+                text-align: center;
+            }
+        </style>
+        <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
+        <script>
+            
+            var storeData;
+            var aliasName;
+            
+            function submitSignature() {
+                var form = $('#form');
+                $('#signature').prop('required', false);
+                if (form[0].checkValidity()) {
+                    form.off('submit');
+                    form.on('submit', startSignature);
+                }
+                $('#submit').click();
+            }
+            
+            function submitVerify() {
+                var form = $('#form');
+                $('#signature').prop('required', true);
+                if (form[0].checkValidity()) {
+                    form.off('submit');
+                    form.on('submit', realVerify);
+                }
+                $('#submit').click();
+            }
+            
+            function realVerify() {
+                var data = {
+                    data: btoa($('#data').val()),
+                    sign: $('#signature').val(),
+                    type: 'SHA1withRSA',
+                    alias: aliasName
+                };
+                $.ajax({
+                    url: "http://localhost:8000/signer/verify",
+                    type: "post",
+                    dataType: "json",
+                    contentType: 'application/json',
+                    data: JSON.stringify(data)
+                }).done (function(data) { 
+                    if (data.status === 'success' && data.verify) {
+                        $('#verifyResult').css({color: "blue"});
+                        $('#verifyResult').text('verification OK!!!');
+                        $('#panel').hide();
+                        setTimeout(function() {$('#verifyResult').text('');}, 5000);
+                    } else if (data.status === 'success' && !data.verify) {
+                        $('#verifyResult').css({color: "red"});
+                        $('#verifyResult').text('verification KO!!!');
+                        $('#panel').hide();
+                        setTimeout(function() {$('#verifyResult').text('');}, 5000);
+                    } else {
+                        alert(data.errorMessage);
+                    }
+                }).fail (function(jqXHR, textStatus, errorThrown)  { 
+                    alert(textStatus); 
+                });
+            }
+            
+            function startSignature() {
+                var password = $('#password').val();
+                var data = {password: password};
+                $.ajax({
+                    url: "http://localhost:8000/signer/isInitialized",
+                    type: "post",
+                    dataType: "json",
+                    contentType: 'application/json',
+                    data: JSON.stringify(data)
+                }).done (function(data) { 
+                    if (data.status === 'success') {
+                        storeData = data;
+                        if (data.storePasswordNeeded && !data.initialized) {
+                            requestPassword('Password for store: ', initialize);
+                        } else {
+                            listCertificates();
+                        }
+                    } else {
+                        alert(data.errorMessage);
+                    }
+                }).fail (function(jqXHR, textStatus, errorThrown)  { 
+                    alert(textStatus); 
+                });
+                return true;
+            }
+            
+            function initialize() {
+                var password = $('#password').val();
+                var data = {password: password};
+                $.ajax({
+                    url: "http://localhost:8000/signer/initialize",
+                    type: "post",
+                    dataType: "json",
+                    contentType: 'application/json',
+                    data: JSON.stringify(data)
+                }).done (function(data) { 
+                    if (data.status === 'success') {
+                        listCertificates();
+                    } else {
+                        alert(data.errorMessage);
+                    }
+                }).fail (function(jqXHR, textStatus, errorThrown)  { 
+                    alert(textStatus); 
+                });
+            }
+            
+            function listCertificates() {
+                $.ajax({
+                    url: "http://localhost:8000/signer/listCertificates",
+                    type: "post",
+                    dataType: "json",
+                    contentType: 'application/json'
+                }).done (function(data) { 
+                    if (data.status === 'success') {
+                        selectCertificate(data);
+                    } else {
+                        alert(data.errorMessage);
+                    }
+                }).fail (function(jqXHR, textStatus, errorThrown)  { 
+                    alert(textStatus);
+                });
+            }
+            
+            function requestPassword(text, functionName) {
+                var panel = $('#panel');
+                panel.empty();
+                var form = $('<form/>', {id: 'form', action: '#'}).on('submit', functionName);
+                var label = $('<label/>', {for: 'password'}).text(text);
+                var password = $('<input/>', {id: 'password', type: 'password', required: 'true'});
+                var button = $('<input/>', {type: 'submit', value: 'Next'});
+                form.append(label);
+                form.append(password);
+                form.append(button);
+                panel.append(form);
+                panel.show();
+            }
+            
+            function selectCertificate(data) {
+                var panel = $('#panel');
+                panel.empty();
+                var title = $('<h2/>').text('Select a certificate');
+                panel.append(title);
+                var list = $('<ul/>');
+                for (var i in data.certificates) {
+                    list.append($('<li>').append($('<a/>', {href: '#', onclick: "sign('" + data.certificates[i].alias + "')"})
+                            .text(data.certificates[i].subject)));
+                }
+                panel.append(list);
+                panel.show();
+            }
+            
+            function sign(alias) {
+                aliasName = alias;
+                if (storeData.keyAccessNeeded && !storeData.samePasswordForKeys) {
+                    requestPassword('Password for key: ', realSign);
+                } else {
+                    realSign();
+                }
+            }
+            
+            function realSign() {
+                var data = {
+                    data: btoa($('#data').val()),
+                    type: 'SHA1withRSA',
+                    password: $('#password').val(),
+                    alias: aliasName
+                };
+                $.ajax({
+                    url: "http://localhost:8000/signer/sign",
+                    type: "post",
+                    dataType: "json",
+                    contentType: 'application/json',
+                    data: JSON.stringify(data)
+                }).done (function(data) { 
+                    if (data.status === 'success') {
+                        $('#signature').val(data.sign);
+                        $('#verify').prop('disabled', false);
+                        $('#panel').hide();
+                    } else {
+                        alert(data.errorMessage);
+                    }
+                }).fail (function(jqXHR, textStatus, errorThrown)  { 
+                    alert(textStatus); 
+                });
+            }
+            
+            function cleanVerify() {
+                $('#verify').prop('disabled', true);
+                $('#verifyResult').text('');
+            }
+            
+        </script>
+    </head>
+    <body>
+        <h1>Sign example</h1>
+        <div>
+            <form id="form" action="javascript:;" onreset="cleanVerify()">
+                <label for="data">Data to Sign:</label><br/>
+                <textarea id="data" cols="60" rows="8" required></textarea><br/>
+                <label for="signature">Signature:</label><br/>
+                <textarea id="signature" cols="60" rows="8" disabled></textarea><label id="verifyResult" class="result"></label><br/>
+                <input id="sign" type="button" value=" Sign " onclick="return submitSignature()"/>
+                <input id="verify" type="button" value="Verify" disabled onclick="return submitVerify()"/>
+                <input type="Reset" value="Reset "/>
+                <input id="submit" type="Submit" style="display: none;">
+            </form>
+        </div>
+        <div id="panel"></div>
+    </body>
+</html>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project-private xmlns="http://www.netbeans.org/ns/project-private/1">
+    <editor-bookmarks xmlns="http://www.netbeans.org/ns/editor-bookmarks/2" lastBookmarkId="0"/>
+    <open-files xmlns="http://www.netbeans.org/ns/projectui-open-files/2">
+        <group>
+            <file>file:/home/ricky/NetBeansProjects/SignerDaemon/src/es/rickyepoderi/signerdaemon/Signer.java</file>
+            <file>file:/home/ricky/NetBeansProjects/SignerDaemon/src/es/rickyepoderi/signerdaemon/SignerDaemon.java</file>
+            <file>file:/home/ricky/NetBeansProjects/SignerDaemon/src/es/rickyepoderi/signerdaemon/JSSMozillaSigner.java</file>
+            <file>file:/home/ricky/NetBeansProjects/SignerDaemon/src/es/rickyepoderi/signerdaemon/PKCS11Signer.java</file>
+            <file>file:/home/ricky/NetBeansProjects/SignerDaemon/src/es/rickyepoderi/signerdaemon/JCESigner.java</file>
+            <file>file:/home/ricky/NetBeansProjects/SignerDaemon/index.html</file>
+        </group>
+    </open-files>
+</project-private>
